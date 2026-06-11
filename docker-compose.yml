@@ -7,11 +7,25 @@ services:
       - "8080:8080"
     restart: unless-stopped
     volumes:
-      - playbook-data:/playbooks
+      # Previous Docker named volume (kept for reference):
+      # - playbook-data:/playbooks
+      # Host bind mount for easier manual management of overrides/custom playbooks:
+      - ./playbooks-data:/playbooks
+    environment:
+      # ── Active SIEM/tool tabs (exactly 5 shown) ───────────────────────────
+      # Available values: splunk, kql, security_onion, qradar, sigma, sysmon,
+      #   velociraptor, osquery, carbon_black, elastic, elastic_detection_rules,
+      #   chronicle, crowdstrike, defender, opensearch, logrhythm
+      - SIEM_TOOL_1=sysmon
+      - SIEM_TOOL_2=osquery
+      - SIEM_TOOL_3=velociraptor
+      - SIEM_TOOL_4=elastic
+      - SIEM_TOOL_5=elastic_detection_rules
     labels:
       - "com.soc.description=SOC IR Playbook Library"
-      - "com.soc.version=3.0"
+      - "com.soc.version=4.0"
 
-volumes:
-  playbook-data:
-    driver: local
+# Previous Docker named volume definition (disabled):
+# volumes:
+#   playbook-data:
+#     driver: local
