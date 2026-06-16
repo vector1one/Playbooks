@@ -48,6 +48,7 @@
         <div class="nav-item" id="nav-base" onclick="showPanel('base',this)">Base alert procedure</div>
         <div class="nav-item nav-item-navigator" id="nav-navigator" onclick="showPanel('navigator',this)">MITRE Navigator</div>
         <div class="nav-item nav-item-sops" id="nav-sops" onclick="showPanel('sops',this)">SOPs</div>
+        <div class="nav-item nav-item-docs" id="nav-docs" onclick="showPanel('docs',this)">Query Reference</div>
       </div>
     </div>
     <div id="dyn-nav"></div>
@@ -299,6 +300,39 @@
         </div>
       </div>
       <iframe id="sop-pdf-frame" style="display:none;width:100%;height:100%;border:none" title="SOP Viewer"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- QUERY REFERENCE DOCS -->
+<div class="panel" id="panel-docs">
+  <div class="sop-layout">
+    <div class="sop-sidebar">
+      <div class="sop-upload-bar">
+        <h3>Query &amp; Detection Reference</h3>
+        <div class="sop-upload-form">
+          <input type="text" id="doc-name-input" placeholder="Document name (optional)">
+          <select id="doc-cat-select">
+            <option value="Elastic EQL">Elastic EQL</option>
+            <option value="Elasticsearch Detection">Elasticsearch Detection</option>
+            <option value="Velociraptor VQL">Velociraptor VQL</option>
+            <option value="General Reference">General Reference</option>
+          </select>
+          <input type="file" id="doc-file-input" accept=".pdf,application/pdf">
+          <button class="sop-upload-submit" id="doc-upload-btn" onclick="uploadDoc()">Upload PDF</button>
+        </div>
+      </div>
+      <div id="doc-list-inner"><div class="sop-empty">Loading…</div></div>
+    </div>
+    <div class="sop-viewer">
+      <div class="sop-viewer-placeholder" id="doc-viewer-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%">
+        <div style="text-align:center;color:var(--text3);padding:60px 20px">
+          <div style="font-size:48px;margin-bottom:16px">🔍</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:8px">Select a document to view</div>
+          <div style="font-size:13px">Elastic EQL · Elasticsearch detections · Velociraptor VQL</div>
+        </div>
+      </div>
+      <iframe id="doc-pdf-frame" style="display:none;width:100%;height:100%;border:none" title="Document Viewer"></iframe>
     </div>
   </div>
 </div>

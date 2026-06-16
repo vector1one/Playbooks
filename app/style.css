@@ -738,3 +738,5 @@ details[open]>.step-query-summary{border-bottom:1px solid var(--border)}
 .sop-delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 3px; line-height: 1; }
 .sop-delete-btn:hover { background: var(--red-bg); color: var(--red-t); }
 .nav-item-sops::before { content: "📋 "; font-style: normal; }
+.nav-item-docs::before { content: "🔍 "; font-style: normal; }
+.doc-badge { background: var(--purple-bg); color: var(--purple-t); }

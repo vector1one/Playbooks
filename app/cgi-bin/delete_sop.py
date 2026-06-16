@@ -2,7 +2,7 @@
 import sys, os, json, sqlite3
 
 DB       = "/data/playbooks.db"
-SOPS_DIR = "/data/sops"
+DOCS_DIR = "/data/docs"
 
 print("Content-Type: application/json")
 print("Access-Control-Allow-Origin: *")
@@ -16,28 +16,23 @@ method = os.environ.get("REQUEST_METHOD","")
 if method not in ("DELETE","POST"):
     err("Method not allowed")
 
-qs    = os.environ.get("QUERY_STRING","")
-sop_id = next((p.split("=",1)[1] for p in qs.split("&") if p.startswith("id=")), "")
-sop_id = "".join(c for c in sop_id if c.isalnum() or c in "._-")
-if not sop_id:
+qs     = os.environ.get("QUERY_STRING","")
+doc_id = next((p.split("=",1)[1] for p in qs.split("&") if p.startswith("id=")), "")
+doc_id = "".join(c for c in doc_id if c.isalnum() or c in "._-")
+if not doc_id:
     err("Missing id")
 
 try:
     conn = sqlite3.connect(DB)
-    row  = conn.execute("SELECT filename FROM sops WHERE id=?", (sop_id,)).fetchone()
+    row  = conn.execute("SELECT filename FROM documents WHERE id=?", (doc_id,)).fetchone()
     if not row:
-        err("SOP not found")
+        err("Document not found")
     filename = row[0]
-    conn.execute("DELETE FROM sops WHERE id=?", (sop_id,))
+    conn.execute("DELETE FROM documents WHERE id=?", (doc_id,))
     conn.commit()
     conn.close()
-
-    filepath = os.path.join(SOPS_DIR, filename)
-    try:
-        os.remove(filepath)
-    except FileNotFoundError:
-        pass
-
-    print(json.dumps({"ok": True, "deleted": sop_id}))
+    try: os.remove(os.path.join(DOCS_DIR, filename))
+    except FileNotFoundError: pass
+    print(json.dumps({"ok":True,"deleted":doc_id}))
 except Exception as e:
     err(str(e))

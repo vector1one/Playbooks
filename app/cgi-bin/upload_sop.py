@@ -2,7 +2,7 @@
 import sys, os, json, sqlite3, time, secrets, cgi
 
 DB       = "/data/playbooks.db"
-SOPS_DIR = "/data/sops"
+DOCS_DIR = "/data/docs"
 
 print("Content-Type: application/json")
 print("Access-Control-Allow-Origin: *")
@@ -15,26 +15,22 @@ def err(msg):
 if os.environ.get("REQUEST_METHOD") != "POST":
     err("Method not allowed")
 
-os.makedirs(SOPS_DIR, exist_ok=True)
+os.makedirs(DOCS_DIR, exist_ok=True)
 
 try:
-    form = cgi.FieldStorage(
-        fp=sys.stdin.buffer,
-        environ=os.environ,
-        keep_blank_values=True
-    )
+    form = cgi.FieldStorage(fp=sys.stdin.buffer, environ=os.environ, keep_blank_values=True)
 except Exception as e:
     err(f"Failed to parse upload: {e}")
 
-file_item = form.getvalue("file") or form["file"] if "file" in form else None
-if file_item is None or (hasattr(file_item, "filename") and not file_item.filename):
+file_item = form["file"] if "file" in form else None
+if file_item is None or (hasattr(file_item,"filename") and not file_item.filename):
     err("No file provided")
 
-if hasattr(file_item, "file"):
+if hasattr(file_item,"file"):
     raw = file_item.file.read()
     original_filename = file_item.filename or "upload.pdf"
 else:
-    raw = file_item if isinstance(file_item, bytes) else file_item.encode()
+    raw = file_item if isinstance(file_item,bytes) else str(file_item).encode()
     original_filename = "upload.pdf"
 
 if not raw:
@@ -42,13 +38,15 @@ if not raw:
 
 name     = (form.getvalue("name") or os.path.splitext(original_filename)[0]).strip()
 category = (form.getvalue("category") or "General").strip()
+dtype    = form.getvalue("type") or "sop"
+dtype    = dtype if dtype in ("sop","doc") else "sop"
 
-sop_id   = f"sop-{int(time.time()*1000):x}-{secrets.token_hex(4)}"
-filename = f"{sop_id}.pdf"
-filepath = os.path.join(SOPS_DIR, filename)
+doc_id   = f"{dtype}-{int(time.time()*1000):x}-{secrets.token_hex(4)}"
+filename = f"{doc_id}.pdf"
+filepath = os.path.join(DOCS_DIR, filename)
 
 try:
-    with open(filepath, "wb") as fh:
+    with open(filepath,"wb") as fh:
         fh.write(raw)
 except Exception as e:
     err(f"Failed to save file: {e}")
@@ -56,16 +54,14 @@ except Exception as e:
 try:
     conn = sqlite3.connect(DB)
     conn.execute(
-        "INSERT INTO sops (id,name,category,filename,size,uploaded_at) "
-        "VALUES (?,?,?,?,?,datetime('now'))",
-        (sop_id, name, category, filename, len(raw))
+        "INSERT INTO documents (id,name,category,type,filename,size,uploaded_at) "
+        "VALUES (?,?,?,?,?,?,datetime('now'))",
+        (doc_id, name, category, dtype, filename, len(raw))
     )
     conn.commit()
     conn.close()
-    print(json.dumps({"ok": True, "id": sop_id, "name": name, "filename": filename}))
+    print(json.dumps({"ok":True,"id":doc_id,"name":name,"filename":filename,"type":dtype}))
 except Exception as e:
-    try:
-        os.remove(filepath)
-    except Exception:
-        pass
+    try: os.remove(filepath)
+    except Exception: pass
     err(str(e))

@@ -35,8 +35,8 @@ RUN echo '<Directory "/var/www/localhost/cgi-bin">'              >> /etc/apache2
     echo '</Directory>'                                           >> /etc/apache2/conf.d/cgi.conf && \
     echo 'ScriptAlias /cgi-bin/ /var/www/localhost/cgi-bin/'     >> /etc/apache2/conf.d/cgi.conf && \
     echo 'PassEnv SIEM_TOOL_1 SIEM_TOOL_2 SIEM_TOOL_3 SIEM_TOOL_4 SIEM_TOOL_5' >> /etc/apache2/conf.d/cgi.conf && \
-    echo 'Alias /sops/ /data/sops/'                              >> /etc/apache2/conf.d/cgi.conf && \
-    echo '<Directory "/data/sops">'                              >> /etc/apache2/conf.d/cgi.conf && \
+    echo 'Alias /docs/ /data/docs/'                              >> /etc/apache2/conf.d/cgi.conf && \
+    echo '<Directory "/data/docs">'                              >> /etc/apache2/conf.d/cgi.conf && \
     echo '    AllowOverride None'                                 >> /etc/apache2/conf.d/cgi.conf && \
     echo '    Options -Indexes'                                   >> /etc/apache2/conf.d/cgi.conf && \
     echo '    Require all granted'                                >> /etc/apache2/conf.d/cgi.conf && \
@@ -68,7 +68,7 @@ COPY entrypoint.sh                     /entrypoint.sh
 RUN chmod +x /entrypoint.sh /var/www/localhost/cgi-bin/*.sh /var/www/localhost/cgi-bin/*.py
 
 # ── Persistent data volume ────────────────────────────────────────────────
-RUN mkdir -p /data && chown apache:apache /data
+RUN mkdir -p /data/docs && chown -R apache:apache /data
 
 EXPOSE 8080
 

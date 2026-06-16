@@ -2,9 +2,10 @@ const API_LOAD   = "cgi-bin/load_playbooks.py";
 const API_SAVE   = "cgi-bin/save_playbook.py";
 const API_UPDATE = "cgi-bin/update_playbook.py";
 const API_DELETE = "cgi-bin/delete_playbook.py";
-const API_SOP_LOAD   = "cgi-bin/load_sops.py";
+const API_SOP_LOAD   = "cgi-bin/load_sops.py?type=sop";
 const API_SOP_UPLOAD = "cgi-bin/upload_sop.py";
 const API_SOP_DELETE = "cgi-bin/delete_sop.py";
+const API_DOC_LOAD   = "cgi-bin/load_sops.py?type=doc";
 const MITRE_TECHNIQUES_URL = "playbooks/mitre-techniques.json";
 const NAVIGATOR_APP_URL = "attack-navigator/index.html";
 const DEFAULT_TOOL_FALLBACK = "sysmon";
@@ -60,6 +61,8 @@ const state = {
   activeTools: ["sysmon", "osquery", "velociraptor", "elastic", "elastic_detection_rules"],
   sops: [],
   selectedSopId: null,
+  docs: [],
+  selectedDocId: null,
 };
 
 function toggleMobileNav() {
@@ -1243,6 +1246,7 @@ async function init() {
     await loadMitreTechniques();
     await refreshData();
     await loadSops();
+    await loadDocs();
 
     const savedCardView = localStorage.getItem("pb-card-view");
     if (savedCardView === "table") {
@@ -1332,7 +1336,7 @@ function viewSop(id, filename) {
   const frame       = document.getElementById("sop-pdf-frame");
   const placeholder = document.getElementById("sop-viewer-placeholder");
   if (frame && placeholder) {
-    frame.src = `sops/${encodeURIComponent(filename)}`;
+    frame.src = `docs/${encodeURIComponent(filename)}`;
     frame.style.display = "block";
     placeholder.style.display = "none";
   }
@@ -1359,6 +1363,7 @@ async function uploadSop() {
   fd.append("file", file);
   fd.append("name", name);
   fd.append("category", category);
+  fd.append("type", "sop");
 
   if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
   try {
@@ -1425,6 +1430,113 @@ window.toggleChecklist = toggleChecklist;
 window.uploadSop = uploadSop;
 window.viewSop = viewSop;
 window.confirmDeleteSop = confirmDeleteSop;
+
+// ── REFERENCE DOCS (Elastic EQL / Elasticsearch / Velociraptor VQL) ─────────
+
+const DOC_CATEGORIES = [
+  "Elastic EQL",
+  "Elasticsearch Detection",
+  "Velociraptor VQL",
+  "General Reference",
+];
+
+async function loadDocs() {
+  const data = await fetchJson(API_DOC_LOAD).catch(() => []);
+  state.docs = Array.isArray(data) ? data : [];
+  renderDocsPanel();
+}
+
+function renderDocsPanel() {
+  const inner = document.getElementById("doc-list-inner");
+  if (!inner) return;
+
+  const list = state.docs.length === 0
+    ? `<div class="sop-empty">No documents uploaded yet.<br>Use the form above to add your first reference doc.</div>`
+    : state.docs.map(d => `
+        <div class="sop-card ${d.id === state.selectedDocId ? "active" : ""}" onclick="viewDoc('${esc(d.id)}','${esc(d.filename)}')">
+          <div class="sop-card-name">${esc(d.name)}</div>
+          <div class="sop-card-meta">
+            <span class="sop-badge doc-badge">${esc(d.category)}</span>
+            <span>${formatBytes(d.size)}</span>
+            <span>${formatDate(d.uploaded_at)}</span>
+          </div>
+          <button class="sop-delete-btn" onclick="event.stopPropagation();confirmDeleteDoc('${esc(d.id)}','${esc(d.name)}')" title="Delete document">✕</button>
+        </div>`).join("");
+
+  inner.innerHTML = list;
+}
+
+function viewDoc(id, filename) {
+  state.selectedDocId = id;
+  const frame       = document.getElementById("doc-pdf-frame");
+  const placeholder = document.getElementById("doc-viewer-placeholder");
+  if (frame && placeholder) {
+    frame.src = `docs/${encodeURIComponent(filename)}`;
+    frame.style.display = "block";
+    placeholder.style.display = "none";
+  }
+  renderDocsPanel();
+}
+
+async function uploadDoc() {
+  const fileInput = document.getElementById("doc-file-input");
+  const nameInput = document.getElementById("doc-name-input");
+  const catSelect = document.getElementById("doc-cat-select");
+  const btn       = document.getElementById("doc-upload-btn");
+
+  if (!fileInput?.files?.length) { alert("Please choose a PDF file."); return; }
+  const file = fileInput.files[0];
+  if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+    alert("Only PDF files are supported.");
+    return;
+  }
+
+  const name     = nameInput?.value.trim() || file.name.replace(/\.pdf$/i,"");
+  const category = catSelect?.value || "General Reference";
+
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("name", name);
+  fd.append("category", category);
+  fd.append("type", "doc");
+
+  if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
+  try {
+    const res  = await fetch(API_SOP_UPLOAD, { method: "POST", body: fd });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    if (fileInput) fileInput.value = "";
+    if (nameInput) nameInput.value = "";
+    await loadDocs();
+  } catch (e) {
+    alert(`Upload failed: ${e.message}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Upload"; }
+  }
+}
+
+async function confirmDeleteDoc(id, name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    const res  = await fetch(`${API_SOP_DELETE}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    if (state.selectedDocId === id) {
+      state.selectedDocId = null;
+      const frame       = document.getElementById("doc-pdf-frame");
+      const placeholder = document.getElementById("doc-viewer-placeholder");
+      if (frame)       { frame.src = ""; frame.style.display = "none"; }
+      if (placeholder)   placeholder.style.display = "flex";
+    }
+    await loadDocs();
+  } catch (e) {
+    alert(`Delete failed: ${e.message}`);
+  }
+}
+
+window.uploadDoc = uploadDoc;
+window.viewDoc = viewDoc;
+window.confirmDeleteDoc = confirmDeleteDoc;
 window.toggleChecklistStep = toggleChecklistStep;
 window.resetChecklist = resetChecklist;
 window.printPlaybook = printPlaybook;
