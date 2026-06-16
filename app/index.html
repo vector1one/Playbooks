@@ -17,7 +17,7 @@
 <div class="sb-head">
   <div class="sb-head-text">
     <div class="sb-title">SOC Playbook Library</div>
-    <div class="sb-sub">Security Onion · Sysmon · OSQuery · Velociraptor · v4.0</div>
+    <div class="sb-sub">Sysmon · OSQuery · Velociraptor · Elastic · v4.0</div>
   </div>
   <button class="theme-toggle-btn" id="theme-toggle-btn" onclick="toggleTheme()" title="Toggle light/dark theme">☀</button>
 </div>
@@ -47,6 +47,7 @@
         <div class="nav-item active" id="nav-home" onclick="showPanel('home',this)">All playbooks</div>
         <div class="nav-item" id="nav-base" onclick="showPanel('base',this)">Base alert procedure</div>
         <div class="nav-item nav-item-navigator" id="nav-navigator" onclick="showPanel('navigator',this)">MITRE Navigator</div>
+        <div class="nav-item nav-item-sops" id="nav-sops" onclick="showPanel('sops',this)">SOPs</div>
       </div>
     </div>
     <div id="dyn-nav"></div>
@@ -60,14 +61,14 @@
   <div class="ph">
     <div class="ph-ey">SOC Incident Response</div>
     <div class="ph-ti">Playbook Library</div>
-    <div class="ph-su">Security Onion &middot; Sysmon &middot; OSQuery &middot; MITRE ATT&amp;CK mapped</div>
+    <div class="ph-su">Sysmon &middot; OSQuery &middot; Velociraptor &middot; Elastic &middot; MITRE ATT&amp;CK mapped</div>
     <div class="ph-me">
       <span class="badge b-gray" id="pb-count-badge">0 playbooks</span>
-      <span class="badge b-amber">Security Onion</span>
       <span class="badge b-blue">Sysmon XML</span>
       <span class="badge b-purple">OSQuery SQL</span>
       <span class="badge b-green">Velociraptor VQL</span>
-      <span class="badge b-red">Carbon Black EDR</span>
+      <span class="badge b-amber">Elastic EQL</span>
+      <span class="badge b-teal">Elastic Detection Rules</span>
       <span class="badge b-teal">MITRE mapped</span>
     </div>
   </div>
@@ -265,6 +266,40 @@
     <button class="btn btn-primary" id="save-playbook-btn" onclick="savePlaybook()">Save playbook</button>
     <button class="btn btn-secondary" id="cancel-edit-btn" style="display:none" onclick="cancelEdit()">Cancel edit</button>
     <button class="btn btn-secondary" onclick="resetForm()">Clear form</button>
+  </div>
+</div>
+
+<!-- SOPs -->
+<div class="panel" id="panel-sops">
+  <div class="sop-layout">
+    <div class="sop-sidebar">
+      <div class="sop-upload-bar">
+        <h3>Standard Operating Procedures</h3>
+        <div class="sop-upload-form">
+          <input type="text" id="sop-name-input" placeholder="SOP name (optional — defaults to filename)">
+          <select id="sop-cat-select">
+            <option value="General">General</option>
+            <option value="Policy">Policy</option>
+            <option value="Procedure">Procedure</option>
+            <option value="Reference">Reference</option>
+            <option value="Training">Training</option>
+          </select>
+          <input type="file" id="sop-file-input" accept=".pdf,application/pdf">
+          <button class="sop-upload-submit" id="sop-upload-btn" onclick="uploadSop()">Upload PDF</button>
+        </div>
+      </div>
+      <div id="sop-list-inner"><div class="sop-empty">Loading…</div></div>
+    </div>
+    <div class="sop-viewer">
+      <div class="sop-viewer-placeholder" id="sop-viewer-placeholder" style="display:flex;align-items:center;justify-content:center;height:100%">
+        <div style="text-align:center;color:var(--text3);padding:60px 20px">
+          <div style="font-size:48px;margin-bottom:16px">📄</div>
+          <div style="font-size:18px;font-weight:600;margin-bottom:8px">Select an SOP to view</div>
+          <div style="font-size:13px">Click any SOP from the list to open it here</div>
+        </div>
+      </div>
+      <iframe id="sop-pdf-frame" style="display:none;width:100%;height:100%;border:none" title="SOP Viewer"></iframe>
+    </div>
   </div>
 </div>
 

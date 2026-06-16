@@ -712,3 +712,29 @@ details[open]>.step-query-summary{border-bottom:1px solid var(--border)}
   .wiz-dot-label { display: none; }
   .wiz-review-label { width: 100px; }
 }
+
+/* ── SOP Panel ─────────────────────────────────────────────────────────── */
+#panel-sops { padding: 0; display: flex; flex-direction: column; overflow: hidden; height: 100%; }
+.sop-layout { display: flex; height: 100%; overflow: hidden; }
+.sop-sidebar { width: 340px; min-width: 220px; flex-shrink: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+.sop-viewer { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.sop-upload-bar { padding: 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sop-upload-bar h3 { font-size: 13px; font-weight: 700; margin: 0 0 10px; color: var(--text1); }
+.sop-upload-form { display: flex; flex-direction: column; gap: 6px; }
+.sop-upload-form input[type="text"],
+.sop-upload-form select { padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg1); color: var(--text1); font-size: 12px; }
+.sop-upload-form input[type="file"] { font-size: 11px; color: var(--text2); }
+.sop-upload-submit { padding: 7px 14px; background: var(--accent); color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 12px; transition: opacity .15s; }
+.sop-upload-submit:hover { opacity: .85; }
+.sop-upload-submit:disabled { opacity: .5; cursor: not-allowed; }
+#sop-list-inner { flex: 1; overflow-y: auto; }
+.sop-empty { padding: 40px 16px; text-align: center; color: var(--text3); font-size: 13px; line-height: 1.6; }
+.sop-card { position: relative; padding: 12px 36px 12px 14px; border-bottom: 1px solid var(--border); cursor: pointer; transition: background .12s; }
+.sop-card:hover { background: var(--bg2); }
+.sop-card.active { background: var(--bg2); border-left: 3px solid var(--accent); padding-left: 11px; }
+.sop-card-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; color: var(--text1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sop-card-meta { font-size: 11px; color: var(--text3); display: flex; gap: 8px; flex-wrap: wrap; }
+.sop-badge { background: var(--teal-bg); color: var(--teal-t); padding: 1px 6px; border-radius: 3px; font-size: 10px; font-weight: 600; }
+.sop-delete-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text3); cursor: pointer; font-size: 13px; padding: 2px 5px; border-radius: 3px; line-height: 1; }
+.sop-delete-btn:hover { background: var(--red-bg); color: var(--red-t); }
+.nav-item-sops::before { content: "📋 "; font-style: normal; }

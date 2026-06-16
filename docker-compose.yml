@@ -7,10 +7,8 @@ services:
       - "8080:8080"
     restart: unless-stopped
     volumes:
-      # Previous Docker named volume (kept for reference):
-      # - playbook-data:/playbooks
-      # Host bind mount for easier manual management of overrides/custom playbooks:
-      - ./playbooks-data:/playbooks
+      # Host bind mount — contains playbooks.db (SQLite) + sops/ (PDF files)
+      - ./app-data:/data
     environment:
       # ── Active SIEM/tool tabs (exactly 5 shown) ───────────────────────────
       # Available values: splunk, kql, security_onion, qradar, sigma, sysmon,
@@ -25,7 +23,3 @@ services:
       - "com.soc.description=SOC IR Playbook Library"
       - "com.soc.version=4.0"
 
-# Previous Docker named volume definition (disabled):
-# volumes:
-#   playbook-data:
-#     driver: local

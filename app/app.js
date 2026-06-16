@@ -1,9 +1,10 @@
-const LIBRARY_MANIFEST = "playbooks/manifest.json";
-const LIBRARY_ROOT = "playbooks";
-const API_LOAD = "cgi-bin/load_playbooks.sh";
-const API_SAVE = "cgi-bin/save_playbook.sh";
-const API_UPDATE = "cgi-bin/update_playbook.sh";
-const API_DELETE = "cgi-bin/delete_playbook.sh";
+const API_LOAD   = "cgi-bin/load_playbooks.py";
+const API_SAVE   = "cgi-bin/save_playbook.py";
+const API_UPDATE = "cgi-bin/update_playbook.py";
+const API_DELETE = "cgi-bin/delete_playbook.py";
+const API_SOP_LOAD   = "cgi-bin/load_sops.py";
+const API_SOP_UPLOAD = "cgi-bin/upload_sop.py";
+const API_SOP_DELETE = "cgi-bin/delete_sop.py";
 const MITRE_TECHNIQUES_URL = "playbooks/mitre-techniques.json";
 const NAVIGATOR_APP_URL = "attack-navigator/index.html";
 const DEFAULT_TOOL_FALLBACK = "sysmon";
@@ -57,6 +58,8 @@ const state = {
   activeSourceFilter: "all",
   checklistEnabled: false,
   activeTools: ["sysmon", "osquery", "velociraptor", "elastic", "elastic_detection_rules"],
+  sops: [],
+  selectedSopId: null,
 };
 
 function toggleMobileNav() {
@@ -483,43 +486,24 @@ async function fetchJson(url) {
   return res.json();
 }
 
-async function loadManifest() {
-  const data = await fetchJson(LIBRARY_MANIFEST);
-  state.manifest = Array.isArray(data.playbooks) ? data.playbooks : [];
-}
-
-async function loadLibraryDetails() {
-  const tasks = state.manifest.map(async (item) => {
-    const data = await fetchJson(`${LIBRARY_ROOT}/${item.file}`);
-    const merged = normalizePlaybook({ ...item, ...data, source: "library" });
-    state.libraryById.set(merged.id, merged);
-  });
-  await Promise.all(tasks);
-}
-
-async function loadCustomPlaybooks() {
+async function loadPlaybooks() {
+  state.libraryById.clear();
   state.customById.clear();
   const payload = await fetchJson(API_LOAD).catch(() => []);
   if (!Array.isArray(payload)) return;
   for (const raw of payload) {
     if (!raw?.id) continue;
     const item = normalizePlaybook(raw);
-    state.customById.set(item.id, item);
+    if (item.source === "library") {
+      state.libraryById.set(item.id, item);
+    } else {
+      state.customById.set(item.id, item);
+    }
   }
-}
-
-function buildMergedPlaybooks() {
-  const merged = new Map(state.libraryById);
-  for (const [id, custom] of state.customById.entries()) {
-    const hasLibraryBase = merged.has(id);
-    merged.set(id, {
-      ...merged.get(id),
-      ...custom,
-      id,
-      source: hasLibraryBase ? "library-override" : "custom"
-    });
-  }
-  state.allPlaybooks = Array.from(merged.values()).sort((a, b) => (a.num || 0) - (b.num || 0));
+  state.allPlaybooks = payload
+    .map(r => normalizePlaybook(r))
+    .filter(p => p.id)
+    .sort((a, b) => (a.num || 0) - (b.num || 0));
 }
 
 function groupedByCategory() {
@@ -1221,8 +1205,7 @@ function exportSoar(pbId) {
 }
 
 async function refreshData() {
-  await loadCustomPlaybooks();
-  buildMergedPlaybooks();
+  await loadPlaybooks();
   renderSidebar();
   renderCards();
   updateCardCount();
@@ -1258,9 +1241,8 @@ async function init() {
   try {
     await loadToolConfig();
     await loadMitreTechniques();
-    await loadManifest();
-    await loadLibraryDetails();
     await refreshData();
+    await loadSops();
 
     const savedCardView = localStorage.getItem("pb-card-view");
     if (savedCardView === "table") {
@@ -1303,6 +1285,115 @@ async function init() {
   }
 }
 
+// ── SOP MANAGEMENT ──────────────────────────────────────────────────────────
+
+async function loadSops() {
+  const data = await fetchJson(API_SOP_LOAD).catch(() => []);
+  state.sops = Array.isArray(data) ? data : [];
+  renderSopPanel();
+}
+
+function renderSopPanel() {
+  const panel = document.getElementById("panel-sops");
+  if (!panel) return;
+
+  const categories = [...new Set(state.sops.map(s => s.category))].sort();
+
+  const list = state.sops.length === 0
+    ? `<div class="sop-empty">No SOPs uploaded yet.<br>Use the form above to add your first one.</div>`
+    : state.sops.map(s => `
+        <div class="sop-card ${s.id === state.selectedSopId ? "active" : ""}" onclick="viewSop('${esc(s.id)}','${esc(s.filename)}')">
+          <div class="sop-card-name">${esc(s.name)}</div>
+          <div class="sop-card-meta">
+            <span class="sop-badge">${esc(s.category)}</span>
+            <span>${formatBytes(s.size)}</span>
+            <span>${formatDate(s.uploaded_at)}</span>
+          </div>
+          <button class="sop-delete-btn" onclick="event.stopPropagation();confirmDeleteSop('${esc(s.id)}','${esc(s.name)}')" title="Delete SOP">✕</button>
+        </div>`).join("");
+
+  panel.querySelector("#sop-list-inner").innerHTML = list;
+}
+
+function formatBytes(n) {
+  if (!n) return "—";
+  if (n < 1024) return `${n} B`;
+  if (n < 1048576) return `${(n/1024).toFixed(1)} KB`;
+  return `${(n/1048576).toFixed(1)} MB`;
+}
+
+function formatDate(s) {
+  if (!s) return "";
+  return s.replace("T"," ").replace(/\.\d+Z$/,"").slice(0,16);
+}
+
+function viewSop(id, filename) {
+  state.selectedSopId = id;
+  const frame       = document.getElementById("sop-pdf-frame");
+  const placeholder = document.getElementById("sop-viewer-placeholder");
+  if (frame && placeholder) {
+    frame.src = `sops/${encodeURIComponent(filename)}`;
+    frame.style.display = "block";
+    placeholder.style.display = "none";
+  }
+  renderSopPanel();
+}
+
+async function uploadSop() {
+  const fileInput = document.getElementById("sop-file-input");
+  const nameInput = document.getElementById("sop-name-input");
+  const catSelect = document.getElementById("sop-cat-select");
+  const btn       = document.getElementById("sop-upload-btn");
+
+  if (!fileInput?.files?.length) { alert("Please choose a PDF file."); return; }
+  const file = fileInput.files[0];
+  if (!file.name.toLowerCase().endsWith(".pdf") && file.type !== "application/pdf") {
+    alert("Only PDF files are supported.");
+    return;
+  }
+
+  const name     = nameInput?.value.trim() || file.name.replace(/\.pdf$/i,"");
+  const category = catSelect?.value || "General";
+
+  const fd = new FormData();
+  fd.append("file", file);
+  fd.append("name", name);
+  fd.append("category", category);
+
+  if (btn) { btn.disabled = true; btn.textContent = "Uploading…"; }
+  try {
+    const res  = await fetch(API_SOP_UPLOAD, { method: "POST", body: fd });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    if (fileInput) fileInput.value = "";
+    if (nameInput) nameInput.value = "";
+    await loadSops();
+  } catch (e) {
+    alert(`Upload failed: ${e.message}`);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "Upload"; }
+  }
+}
+
+async function confirmDeleteSop(id, name) {
+  if (!confirm(`Delete "${name}"?`)) return;
+  try {
+    const res  = await fetch(`${API_SOP_DELETE}?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+    const json = await res.json();
+    if (json.error) throw new Error(json.error);
+    if (state.selectedSopId === id) {
+      state.selectedSopId = null;
+      const frame       = document.getElementById("sop-pdf-frame");
+      const placeholder = document.getElementById("sop-viewer-placeholder");
+      if (frame)       { frame.src = ""; frame.style.display = "none"; }
+      if (placeholder)   placeholder.style.display = "flex";
+    }
+    await loadSops();
+  } catch (e) {
+    alert(`Delete failed: ${e.message}`);
+  }
+}
+
 window.toggleGroup = toggleGroup;
 window.showPanel = showPanel;
 window.searchNav = searchNav;
@@ -1331,6 +1422,9 @@ window.filterSourceSelect = filterSourceSelect;
 window.filterSeveritySelect = filterSeveritySelect;
 window.setCardView = setCardView;
 window.toggleChecklist = toggleChecklist;
+window.uploadSop = uploadSop;
+window.viewSop = viewSop;
+window.confirmDeleteSop = confirmDeleteSop;
 window.toggleChecklistStep = toggleChecklistStep;
 window.resetChecklist = resetChecklist;
 window.printPlaybook = printPlaybook;
