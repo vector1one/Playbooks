@@ -4,3 +4,6 @@
 
 # Editor
 .vscode/
+
+# Claude Code internal
+.claude/
