@@ -1,0 +1,9 @@
+*.zip
+*.tar
+*.tar.gz
+
+# Editor
+.vscode/
+
+# Claude Code internal
+.claude/

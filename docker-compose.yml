@@ -7,11 +7,19 @@ services:
       - "8080:8080"
     restart: unless-stopped
     volumes:
-      - playbook-data:/playbooks
+      # Host bind mount — contains playbooks.db (SQLite) + sops/ (PDF files)
+      - ./app-data:/data
+    environment:
+      # ── Active SIEM/tool tabs (exactly 5 shown) ───────────────────────────
+      # Available values: splunk, kql, security_onion, qradar, sigma, sysmon,
+      #   velociraptor, osquery, carbon_black, elastic, elastic_detection_rules,
+      #   chronicle, crowdstrike, defender, opensearch, logrhythm
+      - SIEM_TOOL_1=sysmon
+      - SIEM_TOOL_2=osquery
+      - SIEM_TOOL_3=velociraptor
+      - SIEM_TOOL_4=elastic
+      - SIEM_TOOL_5=elastic_detection_rules
     labels:
       - "com.soc.description=SOC IR Playbook Library"
-      - "com.soc.version=3.0"
+      - "com.soc.version=4.0"
 
-volumes:
-  playbook-data:
-    driver: local
